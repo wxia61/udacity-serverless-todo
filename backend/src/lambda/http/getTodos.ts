@@ -1,9 +1,11 @@
 import 'source-map-support/register'
 import * as AWS  from 'aws-sdk'
-const docClient = new AWS.DynamoDB.DocumentClient()
+import * as AWSXRay from 'aws-xray-sdk'
+const XAWS = AWSXRay.captureAWS(AWS)
+
+const docClient = new XAWS.DynamoDB.DocumentClient()
 
 const todosTable = process.env.TODOS_TABLE
-const todosTableIndex = process.env.INDEX_NAME
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult, APIGatewayProxyHandler } from 'aws-lambda'
 
@@ -25,16 +27,13 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
 
 
 async function getTodosPerUser(userId: string) {
-  const result = await docClient.query({
+  const result = await docClient.scan({
     TableName: todosTable,
-    IndexName: todosTableIndex,
-    KeyConditionExpression: 'userId = :userId',
+    FilterExpression: 'userId = :userId',
     ExpressionAttributeValues: {
-      ':userId': userId
+        ':userId': userId,
     },
-    ScanIndexForward: false
   }).promise()
 
   return result.Items
-
 }
